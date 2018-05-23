@@ -1,0 +1,10 @@
+<RCC>
+  <qresource prefix="arrows">
+    <file>rot_anticlockwise.jpg</file>
+    <file>rot_clockwise.jpg</file>
+    <file>down_arrow.png</file>
+    <file>left_arrow.png</file>
+    <file>right_arrow.png</file>
+    <file>up_arrow.png</file>
+  </qresource>
+</RCC>
