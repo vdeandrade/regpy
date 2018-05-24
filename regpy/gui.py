@@ -22,7 +22,8 @@ LOG = logging.getLogger(__name__)
 
 def file_io():
     ##########################################################################################################
-    fdir = '/local/dataraid/'
+    ## fdir = '/local/dataraid/'
+    fdir = '/local/data/2018-04/Dubacq/'
     file_name_Im1 = 'tomo_manip7G-sc_7124eV_1200prj_354.h5'
     file_name_Im2 = 'tomo_manip7G-sc_7200eV_1200prj_352.h5'
     prj = 0
@@ -56,8 +57,6 @@ def file_io():
 #        plt.subplot(1,2,2), plt.imshow(np.squeeze(Im2), cmap='gray', aspect="auto", interpolation='none'), plt.colorbar()
 #        plt.show()
 
-    print(Im1.shape)
-    print(Im2.shape)
     return Im1, Im2
 
 def transform_image(img, rotation=0, translation=(0, 0), crop=False):
