@@ -2,21 +2,11 @@ import os
 import sys
 import logging
 import pkg_resources
-import pyqtgraph as pg
-#import tifffile
-#import dxchange as dx
-#import ufot.widgets
-#import ufot.process
-#import ufot.util as util
-#import ufot.config as config
-#import ufot.reco as reco
-
-from argparse import ArgumentParser
 import numpy as np
+import pyqtgraph as pg
+from argparse import ArgumentParser
 from contextlib import contextmanager
 from PyQt4 import QtGui, QtCore, uic
-
-
 
 import tomopy
 import dxchange
@@ -30,7 +20,7 @@ print('\n*** Libraries imported')
 LOG = logging.getLogger(__name__)
 
 
-def main_call():
+def file_io():
     ##########################################################################################################
     fdir = '/local/data/2018-04/Dubacq/'
     file_name_Im1 = 'tomo_manip7G-sc_7124eV_1200prj_354.h5'
@@ -121,6 +111,10 @@ def transform_image(img, rotation=0, translation=(0, 0), crop=False):
         out = out[crops[0]:crops[1],
                   crops[2]:crops[3]]
     return out, crops
+
+# ##########################################################################################
+#                              added to link GUI with tasks
+# ##########################################################################################
 
 def remove_extrema(data):
     upper = np.percentile(data, 99)
