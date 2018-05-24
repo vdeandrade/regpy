@@ -22,7 +22,7 @@ LOG = logging.getLogger(__name__)
 
 def file_io():
     ##########################################################################################################
-    fdir = '/local/data/2018-04/Dubacq/'
+    fdir = '/local/dataraid/'
     file_name_Im1 = 'tomo_manip7G-sc_7124eV_1200prj_354.h5'
     file_name_Im2 = 'tomo_manip7G-sc_7200eV_1200prj_352.h5'
     prj = 0
@@ -50,12 +50,15 @@ def file_io():
         Im2 = tomopy.downsample(Im2, level=binning, axis=1)
 
 
-    if 1:
-        plt.figure(),
-        plt.subplot(1,2,1), plt.imshow(np.squeeze(Im1), cmap='gray', aspect="auto", interpolation='none'), plt.colorbar()
-        plt.subplot(1,2,2), plt.imshow(np.squeeze(Im2), cmap='gray', aspect="auto", interpolation='none'), plt.colorbar()
-        plt.show()
+#    if 1:
+#        plt.figure(),
+#        plt.subplot(1,2,1), plt.imshow(np.squeeze(Im1), cmap='gray', aspect="auto", interpolation='none'), plt.colorbar()
+#        plt.subplot(1,2,2), plt.imshow(np.squeeze(Im2), cmap='gray', aspect="auto", interpolation='none'), plt.colorbar()
+#        plt.show()
 
+    print(Im1.shape)
+    print(Im2.shape)
+    return Im1, Im2
 
 def transform_image(img, rotation=0, translation=(0, 0), crop=False):
     """Take a set of transformations and apply them to the image.
@@ -172,7 +175,41 @@ class OverlapViewer(QtGui.QWidget):
             moved = np.roll(self.second, self.second.shape[0] / 2 - pos, axis=0)
             self.image_item.setImage(moved - self.first)
 
+def guess_center(first_projection, last_projection):
+    """
+    Compute the tomographic rotation center based on cross-correlation technique.
+    *first_projection* is the projection at 0 deg, *last_projection* is the
+    projection at 180 deg.
+    """
+    from scipy.signal import fftconvolve
+    width = first_projection.shape[1]
+    first_projection = first_projection - first_projection.mean()
+    last_projection = last_projection - last_projection.mean()
+
+    # The rotation by 180 deg flips the image horizontally, in order
+    # to do cross-correlation by convolution we must also flip it
+    # vertically, so the image is transposed and we can apply convolution
+    # which will act as cross-correlation
+    convolved = fftconvolve(first_projection, last_projection[::-1, :], mode='same')
+    center = np.unravel_index(convolved.argmax(), convolved.shape)[1]
+
+    return (width / 2.0 + center) / 2
+
     
+class CenterCalibration(object):
+
+    def __init__(self, first, last):
+        self.center = guess_center(first, last)
+        self.count, self.height, self.width = first.shape
+
+    @property
+    def position(self):
+        return self.width / 2.0 + self.width - self.center * 2.0
+
+    @position.setter
+    def position(self, p):
+        self.center = (self.width / 2.0 + self.width - p) / 2
+
 class ApplicationWindow(QtGui.QMainWindow):
     def __init__(self, app):
         QtGui.QMainWindow.__init__(self)
@@ -186,13 +223,26 @@ class ApplicationWindow(QtGui.QMainWindow):
         self.ui.overlap_layout.addWidget(self.overlap_viewer)
 
         # connect signals
-        #self.overlap_viewer.slider.valueChanged.connect(self.center_slider_changed)
+        self.overlap_viewer.slider.valueChanged.connect(self.x_slider_changed)
+        
         self.ui.arrow_right.clicked.connect(self.arrow_right_clicked)
         self.ui.arrow_left.clicked.connect(self.arrow_left_clicked)
         self.ui.arrow_up.clicked.connect(self.arrow_up_clicked)
         self.ui.arrow_down.clicked.connect(self.arrow_down_clicked)
         self.ui.rotate_clock.clicked.connect(self.rotate_clock_clicked)
         self.ui.rotate_cclock.clicked.connect(self.rotate_cclock_clicked)
+        
+        self.ui.load_images.clicked.connect(self.on_load_images)
+        
+    def on_load_images(self):
+        first, last = file_io()
+
+        with spinning_cursor():
+            self.center_calibration = CenterCalibration(first, last)
+
+        position = self.center_calibration.position
+        self.overlap_viewer.set_images(first, last)
+        self.overlap_viewer.set_position(position)
 
     def arrow_right_clicked(self, checked):
         print("clicking right")
@@ -212,6 +262,20 @@ class ApplicationWindow(QtGui.QMainWindow):
     def rotate_cclock_clicked(self, checked):
         print("rotating counter clock")
 
+    def x_slider_changed(self):
+        val = self.overlap_viewer.slider.value()
+        self.center_calibration.position = val
+#        self.ui.center.setText('{} px'.format(self.center_calibration.center))
+        self.ui.value_X.setText(str(self.center_calibration.center))
+        #self.ui.center_spin.setValue(self.center_calibration.center)
+
+@contextmanager
+def spinning_cursor():
+    QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
+    yield
+    QtGui.QApplication.restoreOverrideCursor()
+    
+    
 def main():
     app = QtGui.QApplication(sys.argv)
     ApplicationWindow(app)
